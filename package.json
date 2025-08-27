@@ -1,0 +1,16 @@
+{
+  "name": "e-commerce-app",
+  "version": "1.0.0",
+  "description": "e-commerce app using express, node, rest api, and postgresql",
+  "license": "MIT",
+  "author": "anthonypmm",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "nodemon": "^3.1.10"
+  }
+}

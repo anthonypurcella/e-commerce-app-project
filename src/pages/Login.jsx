@@ -10,16 +10,24 @@ function Login() {
     e.preventDefault();
 
     const response = await fetch(
-      `http://localhost:3000/users/username/${username}`
+      `http://localhost:3000/login`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: username,
+          password: password,
+        }),
+      }
     );
-    const data = await response.json();
+    const message = await response.text();
+    console.log(message);
 
-    if (data[0] && password === data[0].password_hash) {
-      localStorage.setItem("logged-in", username);
-      console.log('Successful log in!');
+    if (message === "Password Match!") {
+      localStorage.setItem('logged-in', 'loggedIn');
       navigate('/');
-    } else {
-        console.log('username or password is incorrect');
     }
   }
 

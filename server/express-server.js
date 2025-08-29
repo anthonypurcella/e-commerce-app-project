@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import bcrypt from "bcryptjs";
 const app = express();
 const port = 3000;
 import * as db from "../db/index.js";
@@ -78,16 +79,44 @@ app.put("/users/:id", baseURLExtract, idExists, async (req, res) => {
   res.status(200).send(`${req.resourceType} with id ${req.params.id} updated`);
 });
 
+app.post("/login", async (req, res) => {
+  const {username, password} = req.body;
+  try {
+    const usernameResponse = await db.query('SELECT * FROM users WHERE user_name = $1', [username]);
+    if (usernameResponse.rows[0]) {
+      const passwordCompare = await bcrypt.compare(password, usernameResponse.rows[0].password_hash);
+      if (passwordCompare) {
+        res.status(200).send('Password Match!')
+        console.log('Successful login!');
+      } else {
+        res.status(404).send('Password incorrect')
+        console.log('Password incorrect');
+      }
+    } else {
+      res.status(400).send('Username not found');
+      console.log('Username not found');
+    }
+  } 
+  catch (err) {
+    res.status(500).send('Server error');
+    console.error(err);
+  }
+});
+
 app.post("/users", async (req, res) => {
   const { first_name, last_name, email, user_name, password_hash } = req.body;
 
   if (first_name && last_name && email && user_name && password_hash) {
+
+   const salt = await bcrypt.genSalt(10);
+   const passwordHash = await bcrypt.hash(password_hash, salt);
+
     try {
       const response = await db.query(
         "INSERT INTO users (first_name, last_name, email, user_name, password_hash) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-        [first_name, last_name, email, user_name, password_hash]
+        [first_name, last_name, email, user_name, passwordHash]
       );
-      res.status(201).send("User created");
+      res.status(201).json({ message: "User created", user: response.rows[0] });
       console.log(response.rows);
     } catch (err) {
       res.send(err.message);

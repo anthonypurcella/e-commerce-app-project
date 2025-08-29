@@ -30,7 +30,16 @@ app.get("/users", async (req, res) => {
   }
 });
 
-app.get("/users/:id", baseURLExtract, idExists, async (req, res) => {
+app.get("/users/username/:username", async (req, res) => {
+  try {
+    const response = await db.query("SELECT * FROM users WHERE user_name = $1", [req.params.username]);
+    res.status(200).send(response.rows);
+  } catch (err) {
+    res.status(404).send(err.message);
+  }
+});
+
+app.get("/users/id/:id", baseURLExtract, idExists, async (req, res) => {
   try {
     const response = await db.query("SELECT * FROM users WHERE id = $1", [
       req.params.id,

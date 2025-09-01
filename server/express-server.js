@@ -1,4 +1,6 @@
 import express from "express";
+import jwt from 'jsonwebtoken';
+import cookieParser from "cookie-parser";
 import cors from "cors";
 import bcrypt from "bcryptjs";
 const app = express();
@@ -7,6 +9,8 @@ import * as db from "../db/index.js";
 import idExists from "./middleware/idExists.js";
 import baseURLExtract from "../utils/baseURLExtract.js";
 
+const secretKey = '123456';
+
 app.use(
   cors({
     origin: ["http://localhost:5173"],
@@ -14,7 +18,10 @@ app.use(
   })
 );
 
+app.use(cookieParser());
+
 app.use(express.json());
+
 
 app.get("/users", async (req, res) => {
   try {
@@ -140,20 +147,34 @@ app.post("/login", async (req, res) => {
         usernameResponse.rows[0].password_hash
       );
       if (passwordCompare) {
+        const token = jwt.sign({username}, secretKey, {expiresIn: '1h'} );
+
+        res.cookie('authToken', token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          maxAge: 360000,
+        });
+
         res.status(200).send("Password Match!");
         console.log("Successful login!");
+        
       } else {
-        res.status(404).send("Password incorrect");
+        res.status(401).send("Password incorrect");
         console.log("Password incorrect");
       }
     } else {
-      res.status(400).send("Username not found");
+      res.status(401).send("Username not found");
       console.log("Username not found");
     }
   } catch (err) {
     res.status(500).send("Server error");
     console.error(err);
   }
+});
+
+app.post("/logout", (req, res) => {
+  res.clearCookie('authToken');
+  console.log('Successful log out');
 });
 
 app.post("/users", async (req, res) => {

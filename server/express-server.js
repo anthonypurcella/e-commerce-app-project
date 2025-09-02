@@ -28,8 +28,9 @@ app.get("/users", async (req, res) => {
   try {
     const response = await db.query("SELECT * FROM users");
     res.status(200).send(response.rows);
-  } catch (error) {
-    res.send(error.message);
+    return;
+  } catch (err) {
+    res.status(500).send(`Server error: ${err.message}`);
   }
 });
 
@@ -39,8 +40,9 @@ app.get("/products", async (req, res) => {
     const data = response.rows;
     console.log(data);
     res.status(200).send(data);
+    return;
   } catch (err) {
-    res.status(500).send(err.message);
+    res.status(500).send(`Server error: ${err.message}`);
   }
 });
 
@@ -49,8 +51,9 @@ app.get("/cart", async (req, res) => {
     const response = await db.query("SELECT * FROM cart");
     const data = response.rows;
     res.status(200).send(data);
+    return;
   } catch (err) {
-    res.status(500).send(err.message);
+    res.status(500).send(`Server error: ${err.message}`);
   }
 });
 
@@ -58,6 +61,7 @@ app.get("/orders", async (req, res) => {
   try {
     const response = await db.query('SELECT * FROM orders');
     res.status(200).send(response.rows);
+    return;
   } catch (err) {
     res.status(500).send(`Server err: ${err.message}`);
   }
@@ -67,27 +71,24 @@ app.get("/orders/users/:id", authenticateToken, attachCustomerById, async (req, 
     try {
       const response = await db.query("SELECT * FROM orders WHERE customer_id = $1", [req.customerId]);
       res.status(200).send(response.rows);
+      return;
     } catch (err) {
       res.status(500).send(`Server err: ${err.message}`);
     }
 });
 
-app.get("/users/cart", authenticateToken, async (req, res) => {
-  const customerId = await db.query(
-    "SELECT id FROM users WHERE user_name = $1",
-    [req.user.username]
-  );
-  const extractedCustomerId = customerId.rows[0].id;
+app.get("/users/cart", authenticateToken, attachCustomerById, async (req, res) => {
 
   try {
     const response = await db.query(
       "SELECT * FROM cart WHERE customer_id = $1",
-      [extractedCustomerId]
+      [req.customerId]
     );
     const data = response.rows;
     res.status(200).send(data);
+    return
   } catch (err) {
-    res.status(500).send(err.message);
+    res.status(500).send(`Server error: ${err.message}`);
   }
 });
 
@@ -97,8 +98,9 @@ app.get("/products/:id", baseURLExtract, idExists, async (req, res) => {
       req.params.id,
     ]);
     res.status(200).send(response.rows);
+    return;
   } catch (err) {
-    res.status(500).send(err.message);
+    res.status(500).send(`Server error: ${err.message}`);
   }
 });
 
@@ -108,8 +110,9 @@ app.get("/users/:id", baseURLExtract, idExists, async (req, res) => {
       req.params.id,
     ]);
     res.status(200).send(response.rows);
+    return;
   } catch (err) {
-    res.status(404).send(err.message);
+    res.status(500).send(`Server error: ${err.message}`);
   }
 });
 
@@ -132,13 +135,14 @@ app.put("/users/:id", baseURLExtract, idExists, async (req, res) => {
             [queryObjectValues[j], req.params.id]
           );
         } catch (err) {
-          res.send(err.message);
+          res.status(500).send(`Server error: ${err.message}`);
         }
       }
     }
   }
 
   res.status(200).send(`${req.resourceType} with id ${req.params.id} updated`);
+  return;
 });
 
 app.put("/products/:id", baseURLExtract, idExists, async (req, res) => {
@@ -160,13 +164,14 @@ app.put("/products/:id", baseURLExtract, idExists, async (req, res) => {
             [queryObjectValues[j], req.params.id]
           );
         } catch (err) {
-          res.send(err.message);
+          res.status(500).send(`Server error: ${err.message}`);
         }
       }
     }
   }
 
   res.status(200).send(`${req.resourceType} with id ${req.params.id} updated`);
+  return;
 });
 
 app.put(
@@ -183,6 +188,7 @@ app.put(
           [req.params.id, req.customerId]
         );
         res.status(200).send("Quantity set to 0 - Product removed from cart");
+        return;
       } catch (err) {
         res.status(500).send(`Server error: ${err.message}`);
       }
@@ -200,6 +206,7 @@ app.put(
         .send(
           `Product ${req.params.id} updated quantity to ${productQuantity}`
         );
+        return;
     } catch (err) {
       res.status(500).send(`Server error: ${err.message}`);
     }
@@ -212,6 +219,7 @@ app.put("/orders/:id", async (req, res) => {
     try {
       const response = await db.query("UPDATE orders SET status = $1 WHERE id = $2 RETURNING *", [newStatus, req.params.id]);
       res.status(200).send(response.rows);
+      return;
     } catch (err) {
       res.status(500).send(`Server err: ${err.message}`);
     }
@@ -261,6 +269,7 @@ app.post("/logout", (req, res) => {
   res.clearCookie("authToken");
   console.log("Successful log out");
   res.status(200).send("Successful logout");
+  return;
 });
 
 app.post("/users", async (req, res) => {
@@ -278,7 +287,7 @@ app.post("/users", async (req, res) => {
       res.status(201).json({ message: "User created", user: response.rows[0] });
       console.log(response.rows);
     } catch (err) {
-      res.send(err.message);
+      res.status(500).send(`Server error: ${err.message}`);
     }
   } else {
     res.status(400).send("Bad request");
@@ -297,7 +306,7 @@ app.post("/products", async (req, res) => {
     const data = response.rows;
     res.status(201).send("Product Created: " + data);
   } catch (err) {
-    res.status(500).send(err.message);
+    res.status(500).send(`Server error: ${err.message}`);
   }
 });
 
@@ -317,6 +326,7 @@ app.post("/cart", authenticateToken, attachCustomerById, async (req, res) => {
           );
           const data = response.rows;
           res.status(201).send("Added to cart: " + data);
+          return;
         } catch (err) {
           res.status(500).send(`Server error: ${err.message}`);
         }
@@ -328,12 +338,13 @@ app.post("/cart", authenticateToken, attachCustomerById, async (req, res) => {
           );
           const data = response.rows;
           res.status(200).send("Product already in cart - Added quantity");
+          return;
         } catch (err) {
           res.status(500).send(`Server error: ${err.message}`);
         }
       }
   } catch (err) {
-    res.status(500).send(`Sever error: ${err.message}`);
+    res.status(500).send(`Server error: ${err.message}`);
 
     
   }
@@ -365,6 +376,7 @@ app.post("/orders", authenticateToken, attachCustomerById, async (req, res) => {
     );
     console.log(response.rows);
     res.status(200).send("Order created"); 
+    return;
   } catch (err) {
     res.status(500).send(`Server error: ${err.message}`);
   }
@@ -376,6 +388,7 @@ app.delete("/users/:id", baseURLExtract, idExists, async (req, res) => {
       req.params.id,
     ]);
     res.status(200).send(`User ${req.params.id} deleted`);
+    return;
   } catch (err) {
     res.send(err.message);
   }
@@ -387,8 +400,9 @@ app.delete("/products/:id", baseURLExtract, idExists, async (req, res) => {
       req.params.id,
     ]);
     res.status(200).send(`Product ${req.params.id} deleted`);
+    return;
   } catch (err) {
-    res.status(500).send(err.message);
+    res.status(500).send(`Server error: ${err.message}`);
   }
 });
 
@@ -403,8 +417,9 @@ app.delete(
         [req.params.id, req.customerId]
       );
       res.status(200).send("Deleted from cart");
+      return;
     } catch (err) {
-      res.status(500).send(err.message);
+      res.status(500).send(`Server error: ${err.message}`);
     }
   }
 );
@@ -415,6 +430,7 @@ app.delete("/cart", authenticateToken, attachCustomerById, async (req, res) => {
       req.customerId,
     ]);
     res.status(200).send("Deleted all items from cart");
+    return;
   } catch (err) {
     res.status(500).send(`Server error: ${err.message}`);
   }
@@ -424,6 +440,7 @@ app.delete("/orders/:id", async (req, res) => {
     try {
       const response = await db.query("DELETE FROM orders WHERE id = $1", [req.params.id]);
       res.status(200).send(response.rows);
+      return;
     } catch (err) {
       res.status(500).send(`Server err: ${err.message}`);
     }

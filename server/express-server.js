@@ -1,15 +1,17 @@
 import express from "express";
-import jwt from 'jsonwebtoken';
+import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import bcrypt from "bcryptjs";
+import dotenv from "dotenv";
+dotenv.config();
 const app = express();
 const port = 3000;
 import * as db from "../db/index.js";
 import idExists from "./middleware/idExists.js";
 import baseURLExtract from "../utils/baseURLExtract.js";
-
-const secretKey = '123456';
+import { authenticateToken } from "./middleware/auth.js";
+import attachCustomerById from "./middleware/attachCustomerId.js";
 
 app.use(
   cors({
@@ -21,7 +23,6 @@ app.use(
 app.use(cookieParser());
 
 app.use(express.json());
-
 
 app.get("/users", async (req, res) => {
   try {
@@ -43,6 +44,53 @@ app.get("/products", async (req, res) => {
   }
 });
 
+app.get("/cart", async (req, res) => {
+  try {
+    const response = await db.query("SELECT * FROM cart");
+    const data = response.rows;
+    res.status(200).send(data);
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+app.get("/orders", async (req, res) => {
+  try {
+    const response = await db.query('SELECT * FROM orders');
+    res.status(200).send(response.rows);
+  } catch (err) {
+    res.status(500).send(`Server err: ${err.message}`);
+  }
+});
+
+app.get("/orders/users/:id", authenticateToken, attachCustomerById, async (req, res) => {
+    try {
+      const response = await db.query("SELECT * FROM orders WHERE customer_id = $1", [req.customerId]);
+      res.status(200).send(response.rows);
+    } catch (err) {
+      res.status(500).send(`Server err: ${err.message}`);
+    }
+});
+
+app.get("/users/cart", authenticateToken, async (req, res) => {
+  const customerId = await db.query(
+    "SELECT id FROM users WHERE user_name = $1",
+    [req.user.username]
+  );
+  const extractedCustomerId = customerId.rows[0].id;
+
+  try {
+    const response = await db.query(
+      "SELECT * FROM cart WHERE customer_id = $1",
+      [extractedCustomerId]
+    );
+    const data = response.rows;
+    res.status(200).send(data);
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
 app.get("/products/:id", baseURLExtract, idExists, async (req, res) => {
   try {
     const response = await db.query("SELECT * FROM products WHERE id = $1", [
@@ -54,19 +102,7 @@ app.get("/products/:id", baseURLExtract, idExists, async (req, res) => {
   }
 });
 
-app.get("/users/username/:username", async (req, res) => {
-  try {
-    const response = await db.query(
-      "SELECT * FROM users WHERE user_name = $1",
-      [req.params.username]
-    );
-    res.status(200).send(response.rows);
-  } catch (err) {
-    res.status(404).send(err.message);
-  }
-});
-
-app.get("/users/id/:id", baseURLExtract, idExists, async (req, res) => {
+app.get("/users/:id", baseURLExtract, idExists, async (req, res) => {
   try {
     const response = await db.query("SELECT * FROM users WHERE id = $1", [
       req.params.id,
@@ -86,7 +122,7 @@ app.put("/users/:id", baseURLExtract, idExists, async (req, res) => {
     [req.params.id]
   );
   const formattedDatabaseObjectKeys = Object.keys(databaseObject.rows[0]);
-  
+
   for (let i = 0; i < formattedDatabaseObjectKeys.length; i++) {
     for (let j = 0; j < queryObjectKeys.length; j++) {
       if (formattedDatabaseObjectKeys[i] === queryObjectKeys[j]) {
@@ -115,7 +151,6 @@ app.put("/products/:id", baseURLExtract, idExists, async (req, res) => {
   );
   const formattedDatabaseObjectKeys = Object.keys(databaseObject.rows[0]);
 
-
   for (let i = 0; i < formattedDatabaseObjectKeys.length; i++) {
     for (let j = 0; j < queryObjectKeys.length; j++) {
       if (formattedDatabaseObjectKeys[i] === queryObjectKeys[j]) {
@@ -134,6 +169,54 @@ app.put("/products/:id", baseURLExtract, idExists, async (req, res) => {
   res.status(200).send(`${req.resourceType} with id ${req.params.id} updated`);
 });
 
+app.put(
+  "/cart/product/:id",
+  authenticateToken,
+  attachCustomerById,
+  async (req, res) => {
+    const { productQuantity } = req.body;
+
+    if (productQuantity === 0) {
+      try {
+        const response = await db.query(
+          "DELETE FROM cart WHERE product_id = $1 AND customer_id = $2",
+          [req.params.id, req.customerId]
+        );
+        res.status(200).send("Quantity set to 0 - Product removed from cart");
+      } catch (err) {
+        res.status(500).send(`Server error: ${err.message}`);
+      }
+    }
+
+    try {
+      const response = await db.query(
+        "UPDATE cart SET quantity = $1 WHERE product_id = $2 AND customer_id = $3 RETURNING *",
+        [productQuantity, req.params.id, req.customerId]
+      );
+      const data = response.rows;
+      console.log(data);
+      res
+        .status(200)
+        .send(
+          `Product ${req.params.id} updated quantity to ${productQuantity}`
+        );
+    } catch (err) {
+      res.status(500).send(`Server error: ${err.message}`);
+    }
+  }
+);
+
+app.put("/orders/:id", async (req, res) => {
+  const {newStatus} = req.body;
+
+    try {
+      const response = await db.query("UPDATE orders SET status = $1 WHERE id = $2 RETURNING *", [newStatus, req.params.id]);
+      res.status(200).send(response.rows);
+    } catch (err) {
+      res.status(500).send(`Server err: ${err.message}`);
+    }
+});
+
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
   try {
@@ -147,17 +230,19 @@ app.post("/login", async (req, res) => {
         usernameResponse.rows[0].password_hash
       );
       if (passwordCompare) {
-        const token = jwt.sign({username}, secretKey, {expiresIn: '1h'} );
+        const token = jwt.sign({ username }, process.env.JWT_SECRET, {
+          expiresIn: "1d",
+        });
 
-        res.cookie('authToken', token, {
+        res.cookie("authToken", token, {
           httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          maxAge: 360000,
+          secure: process.env.NODE_ENV === "production",
+          maxAge: 24 * 60 * 60 * 1000,
         });
 
         res.status(200).send("Password Match!");
         console.log("Successful login!");
-        
+        console.log(token);
       } else {
         res.status(401).send("Password incorrect");
         console.log("Password incorrect");
@@ -173,8 +258,9 @@ app.post("/login", async (req, res) => {
 });
 
 app.post("/logout", (req, res) => {
-  res.clearCookie('authToken');
-  console.log('Successful log out');
+  res.clearCookie("authToken");
+  console.log("Successful log out");
+  res.status(200).send("Successful logout");
 });
 
 app.post("/users", async (req, res) => {
@@ -215,6 +301,75 @@ app.post("/products", async (req, res) => {
   }
 });
 
+app.post("/cart", authenticateToken, attachCustomerById, async (req, res) => {
+  const { productId, productQuantity } = req.body;
+  try {
+    const productCheck = await db.query(
+      "SELECT * FROM cart WHERE product_id = $1",
+      [productId]
+    );
+
+      if (!productCheck.rows.length) {
+        try {
+          const response = await db.query(
+            "INSERT INTO cart (customer_id, product_id, quantity) VALUES ($1, $2, $3) RETURNING *",
+            [req.customerId, productId, productQuantity]
+          );
+          const data = response.rows;
+          res.status(201).send("Added to cart: " + data);
+        } catch (err) {
+          res.status(500).send(`Server error: ${err.message}`);
+        }
+      } else {
+        try {
+          const response = await db.query(
+            "UPDATE cart SET quantity = quantity + $1 WHERE product_id = $2",
+            [productQuantity, productId]
+          );
+          const data = response.rows;
+          res.status(200).send("Product already in cart - Added quantity");
+        } catch (err) {
+          res.status(500).send(`Server error: ${err.message}`);
+        }
+      }
+  } catch (err) {
+    res.status(500).send(`Sever error: ${err.message}`);
+
+    
+  }
+});
+
+app.post("/orders", authenticateToken, attachCustomerById, async (req, res) => {
+  
+  let orderTotal = 0;
+
+  try {
+    const getCustomerCart = await db.query(
+      "SELECT * FROM cart WHERE customer_id = $1",
+      [req.customerId]
+    );
+
+    for (let i = 0; i < getCustomerCart.rows.length; i++) {
+      const getProductPrice = await db.query(
+        "SELECT product_price FROM products WHERE id = $1",
+        [getCustomerCart.rows[i].product_id]
+      );
+      const productPrice = getProductPrice.rows[0].product_price;
+      const productTotal = productPrice * getCustomerCart.rows[i].quantity;
+      orderTotal = orderTotal + productTotal;
+    }
+
+    const response = await db.query(
+      "INSERT INTO orders (customer_id, order_date, order_total, status) VALUES ($1, $2, $3, $4) RETURNING *",
+      [req.customerId, new Date(), Math.round(orderTotal * 100) / 100, "pending"]
+    );
+    console.log(response.rows);
+    res.status(200).send("Order created"); 
+  } catch (err) {
+    res.status(500).send(`Server error: ${err.message}`);
+  }
+});
+
 app.delete("/users/:id", baseURLExtract, idExists, async (req, res) => {
   try {
     const response = await db.query("DELETE FROM users WHERE id = $1", [
@@ -235,6 +390,43 @@ app.delete("/products/:id", baseURLExtract, idExists, async (req, res) => {
   } catch (err) {
     res.status(500).send(err.message);
   }
+});
+
+app.delete(
+  "/cart/product/:id",
+  authenticateToken,
+  attachCustomerById,
+  async (req, res) => {
+    try {
+      const response = await db.query(
+        "DELETE FROM cart WHERE product_id = $1 AND customer_id = $2",
+        [req.params.id, req.customerId]
+      );
+      res.status(200).send("Deleted from cart");
+    } catch (err) {
+      res.status(500).send(err.message);
+    }
+  }
+);
+
+app.delete("/cart", authenticateToken, attachCustomerById, async (req, res) => {
+  try {
+    const response = await db.query("DELETE FROM cart WHERE customer_id = $1", [
+      req.customerId,
+    ]);
+    res.status(200).send("Deleted all items from cart");
+  } catch (err) {
+    res.status(500).send(`Server error: ${err.message}`);
+  }
+});
+
+app.delete("/orders/:id", async (req, res) => {
+    try {
+      const response = await db.query("DELETE FROM orders WHERE id = $1", [req.params.id]);
+      res.status(200).send(response.rows);
+    } catch (err) {
+      res.status(500).send(`Server err: ${err.message}`);
+    }
 });
 
 app.listen(port, () => {

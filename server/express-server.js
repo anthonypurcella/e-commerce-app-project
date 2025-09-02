@@ -12,6 +12,7 @@ import idExists from "./middleware/idExists.js";
 import baseURLExtract from "../utils/baseURLExtract.js";
 import { authenticateToken } from "./middleware/auth.js";
 import attachCustomerById from "./middleware/attachCustomerId.js";
+import { swaggerUi, swaggerDocument } from "../api/swagger.js";
 
 app.use(
   cors({
@@ -23,6 +24,8 @@ app.use(
 app.use(cookieParser());
 
 app.use(express.json());
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.get("/users", async (req, res) => {
   try {
@@ -448,4 +451,5 @@ app.delete("/orders/:id", async (req, res) => {
 
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
+  console.log(`Swagger docs at ${port}/api-docs`);
 });

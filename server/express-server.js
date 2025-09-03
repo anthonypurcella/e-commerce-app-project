@@ -70,6 +70,16 @@ app.get("/orders", async (req, res) => {
   }
 });
 
+app.get("/orders/:id", async (req,res) => {
+  try {
+    const response = await db.query('SELECT * FROM orders WHERE id = $1', [req.params.id]);
+    const data = response.rows[0];
+    res.status(200).send(data);
+  } catch(err) {
+    res.status(500).send(`Server error: ${err.message}`);
+  }
+});
+
 app.get("/orders/users/:id", authenticateToken, attachCustomerById, async (req, res) => {
     try {
       const response = await db.query("SELECT * FROM orders WHERE customer_id = $1", [req.customerId]);
@@ -80,7 +90,7 @@ app.get("/orders/users/:id", authenticateToken, attachCustomerById, async (req, 
     }
 });
 
-app.get("/users/cart", authenticateToken, attachCustomerById, async (req, res) => {
+app.get("/cart/users/:id", authenticateToken, attachCustomerById, async (req, res) => {
 
   try {
     const response = await db.query(
@@ -119,7 +129,36 @@ app.get("/users/:id", baseURLExtract, idExists, async (req, res) => {
   }
 });
 
-app.put("/users/:id", baseURLExtract, idExists, async (req, res) => {
+app.patch("/users/:id", baseURLExtract, idExists, async (req, res) => {
+  const queryObjectKeys = Object.keys(req.body);
+  const queryObjectValues = Object.values(req.body);
+
+  const databaseObject = await db.query(
+    `SELECT * FROM ${req.resourceType} WHERE id = $1`,
+    [req.params.id]
+  );
+  const formattedDatabaseObjectKeys = Object.keys(databaseObject.rows[0]);
+
+  for (let i = 0; i < formattedDatabaseObjectKeys.length; i++) {
+    for (let j = 0; j < queryObjectKeys.length; j++) {
+      if (formattedDatabaseObjectKeys[i] === queryObjectKeys[j]) {
+        try {
+          const response = await db.query(
+            `UPDATE ${req.resourceType} SET ${formattedDatabaseObjectKeys[i]} = $1 WHERE id = $2`,
+            [queryObjectValues[j], req.params.id]
+          );
+        } catch (err) {
+          res.status(500).send(`Server error: ${err.message}`);
+        }
+      }
+    }
+  }
+
+  res.status(200).send(`${req.resourceType} with id ${req.params.id} updated`);
+  return;
+});
+
+app.patch("/products/:id", baseURLExtract, idExists, async (req, res) => {
   const queryObjectKeys = Object.keys(req.query);
   const queryObjectValues = Object.values(req.query);
 
@@ -148,36 +187,7 @@ app.put("/users/:id", baseURLExtract, idExists, async (req, res) => {
   return;
 });
 
-app.put("/products/:id", baseURLExtract, idExists, async (req, res) => {
-  const queryObjectKeys = Object.keys(req.query);
-  const queryObjectValues = Object.values(req.query);
-
-  const databaseObject = await db.query(
-    `SELECT * FROM ${req.resourceType} WHERE id = $1`,
-    [req.params.id]
-  );
-  const formattedDatabaseObjectKeys = Object.keys(databaseObject.rows[0]);
-
-  for (let i = 0; i < formattedDatabaseObjectKeys.length; i++) {
-    for (let j = 0; j < queryObjectKeys.length; j++) {
-      if (formattedDatabaseObjectKeys[i] === queryObjectKeys[j]) {
-        try {
-          const response = await db.query(
-            `UPDATE ${req.resourceType} SET ${formattedDatabaseObjectKeys[i]} = $1 WHERE id = $2`,
-            [queryObjectValues[j], req.params.id]
-          );
-        } catch (err) {
-          res.status(500).send(`Server error: ${err.message}`);
-        }
-      }
-    }
-  }
-
-  res.status(200).send(`${req.resourceType} with id ${req.params.id} updated`);
-  return;
-});
-
-app.put(
+app.patch(
   "/cart/product/:id",
   authenticateToken,
   attachCustomerById,
@@ -216,7 +226,7 @@ app.put(
   }
 );
 
-app.put("/orders/:id", async (req, res) => {
+app.patch("/orders/:id", async (req, res) => {
   const {newStatus} = req.body;
 
     try {
@@ -251,8 +261,7 @@ app.post("/login", async (req, res) => {
           maxAge: 24 * 60 * 60 * 1000,
         });
 
-        res.status(200).send("Password Match!");
-        console.log("Successful login!");
+        res.status(200).send("Successful login!");
         console.log(token);
       } else {
         res.status(401).send("Password incorrect");
@@ -306,8 +315,9 @@ app.post("/products", async (req, res) => {
       "INSERT INTO products (product_name, product_price, product_quantity, product_description) VALUES ($1, $2, $3, $4) RETURNING *",
       [productName, productPrice, productQuantity, productDescription]
     );
-    const data = response.rows;
-    res.status(201).send("Product Created: " + data);
+    const data = response.rows[0];
+    console.log(data);
+    res.status(201).json({message: 'Product created', product: data});
   } catch (err) {
     res.status(500).send(`Server error: ${err.message}`);
   }
@@ -327,8 +337,8 @@ app.post("/cart", authenticateToken, attachCustomerById, async (req, res) => {
             "INSERT INTO cart (customer_id, product_id, quantity) VALUES ($1, $2, $3) RETURNING *",
             [req.customerId, productId, productQuantity]
           );
-          const data = response.rows;
-          res.status(201).send("Added to cart: " + data);
+          const data = response.rows[0];
+          res.status(201).json({message: "Item added to cart", addedProduct: data});
           return;
         } catch (err) {
           res.status(500).send(`Server error: ${err.message}`);
@@ -377,8 +387,10 @@ app.post("/orders", authenticateToken, attachCustomerById, async (req, res) => {
       "INSERT INTO orders (customer_id, order_date, order_total, status) VALUES ($1, $2, $3, $4) RETURNING *",
       [req.customerId, new Date(), Math.round(orderTotal * 100) / 100, "pending"]
     );
-    console.log(response.rows);
-    res.status(200).send("Order created"); 
+     const data = response.rows[0];
+    res.status(201).json({message:'Order created', order: data}); 
+
+    const clearCart = await db.query("DELETE FROM cart WHERE customer_id = $1", [req.customerId]);
     return;
   } catch (err) {
     res.status(500).send(`Server error: ${err.message}`);
@@ -419,7 +431,7 @@ app.delete(
         "DELETE FROM cart WHERE product_id = $1 AND customer_id = $2",
         [req.params.id, req.customerId]
       );
-      res.status(200).send("Deleted from cart");
+      res.status(200).send("Item deleted from cart");
       return;
     } catch (err) {
       res.status(500).send(`Server error: ${err.message}`);
@@ -442,7 +454,7 @@ app.delete("/cart", authenticateToken, attachCustomerById, async (req, res) => {
 app.delete("/orders/:id", async (req, res) => {
     try {
       const response = await db.query("DELETE FROM orders WHERE id = $1", [req.params.id]);
-      res.status(200).send(response.rows);
+      res.status(200).send(`Order with id ${req.params.id} deleted`);
       return;
     } catch (err) {
       res.status(500).send(`Server err: ${err.message}`);

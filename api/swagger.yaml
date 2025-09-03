@@ -1,24 +1,1062 @@
-openapi: 3.0.0
+openapi: 3.0.4
 info:
-  title: E-Commerce API
+  title: E-Commerce Project - OpenAPI 3.0
+  description: >-
+    Project e-commerce website using RESTful API, Express, PostgreSQL, and Node
+    with CRUD operations.
+  contact:
+    email: purcellaanthony@gmail.com
   version: 1.0.0
-  description: API documentation for E-Commerce API Project
-
+tags:
+  - name: users
+    description: Access for users
+  - name: products
+    description: Access for products
+  - name: cart
+    description: Access for cart items
+  - name: orders
+    description: Access to orders
+  - name: login
+    description: Access to app
+  - name: logout
+    description: Remove access to app
 paths:
   /users:
     get:
-      summary: Get all users
+      summary: Retrieve all users
+      description: ''
+      operationId: getUsers
       responses:
         '200':
-          description: A list of users
+          description: Successful Operation
           content:
             application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: integer
-                    name:
-                      type: string
+              examples:
+                Success Response:
+                  value: |-
+                    [
+                        {
+                            "id": 1,
+                            "first_name": "John",
+                            "last_name": "Doe",
+                            "email": "johndoe@gmail.com",
+                            "user_name": "johndoe",
+                            "password_hash": "password"
+                        },
+                    {
+                            "id": 2,
+                            "first_name": "John",
+                            "last_name": "Doe",
+                            "email": "johndoe@gmail.com",
+                            "user_name": "johndoe",
+                            "password_hash": "password"
+                        }
+                    ]
+        '500':
+          description: Server error
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Bad request:
+                  value: Server error
+        default:
+          description: Default error sample response
+      tags:
+        - users
+    post:
+      summary: Add user to database
+      description: >-
+        Providing first_name, last_name, email, username, password_hash in
+        request body; new user will be added to database. Password will be
+        hashed with bcrypt.
+      operationId: addUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                first_name:
+                  type: string
+                  example: John
+                last_name:
+                  type: string
+                  example: Doe
+                email:
+                  type: string
+                  format: email
+                  example: myemail@gmail.com
+                user_name:
+                  type: string
+                  example: username123
+                password_hash:
+                  type: string
+                  description: Password will be hashed using bcrypt
+                  example: password
+      responses:
+        '201':
+          description: Successful user add
+          content:
+            application/json:
+              examples:
+                Successful user add:
+                  value: |-
+                    { "message": "user created", "user": {
+                      "first_name": "John",
+                      "last_name": "Doe",
+                      "email": "myemail@gmail.com",
+                      "user_name": "username123",
+                      "password_hash": "password"
+                    }
+                    }
+        '400':
+          description: Client error
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Client error:
+                  value: Bad request
+        '500':
+          description: Server error
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Server error:
+                  value: Server error
+        default:
+          description: Default error sample response
+      tags:
+        - users
+  /products:
+    get:
+      summary: Retrieve all orders
+      description: ''
+      operationId: getOrders
+      responses:
+        '200':
+          description: Successful Operation
+          content:
+            application/json:
+              examples:
+                Successful Operation:
+                  value: |-
+                    [
+                        {
+                            "id": 1,
+                            "product_name": "T-Shirt",
+                            "product_price": 24.99,
+                            "product_quantity": 100,
+                            "product_description": "A blank T-shirt"
+                        },
+                        {
+                            "id": 2,
+                            "product_name": "Long Sleeve T-Shirt",
+                            "product_price": 29.99,
+                            "product_quantity": 100,
+                            "product_description": "A blank long sleeve T-shirt"
+                        },
+                        {
+                            "id": 3,
+                            "product_name": "Hoodie",
+                            "product_price": 39.99,
+                            "product_quantity": 100,
+                            "product_description": "A blank hoodie"
+                        }
+                    ]
+        '500':
+          description: Server error
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Server error:
+                  value: Server error
+        default:
+          description: Default error sample response
+      tags:
+        - products
+    post:
+      summary: Add product to database
+      description: >-
+        Providing productName, productPrice, productQuantity, productDescription
+        in request body; new product will be added to database.
+      operationId: add Product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                productName:
+                  type: string
+                  example: T-Shirt
+                productPrice:
+                  type: number
+                  example: 24.99
+                productQuantity:
+                  type: integer
+                  example: 100
+                productDescription:
+                  type: string
+                  example: A blank T-Shirt
+      responses:
+        '201':
+          description: Server error
+          content:
+            application/json:
+              examples:
+                Successful product add:
+                  value: |-
+                    {
+                        "message": "Product created",
+                        "product": {
+                            "id": 9,
+                            "product_name": "Hoodie",
+                            "product_price": 39.99,
+                            "product_quantity": 100,
+                            "product_description": "A blank hoodie"
+                        }
+                    }
+        '500':
+          description: Server error
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Server error:
+                  value: Server error
+        default:
+          description: Default error sample response
+      tags:
+        - products
+  /cart:
+    get:
+      summary: Retrieve all cart items
+      description: ''
+      operationId: getCartItems
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              examples:
+                Successful operation:
+                  value: |-
+                    [
+                        {
+                            "customer_id": 9,
+                            "product_id": 2,
+                            "quantity": 5
+                        },
+                        {
+                            "customer_id": 9,
+                            "product_id": 1,
+                            "quantity": 10
+                        }
+                    ]
+        '500':
+          description: Server error
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Server error:
+                  value: Server error
+        default:
+          description: Default error sample response
+      tags:
+        - cart
+    post:
+      summary: Add new item with quantity to cart
+      description: >-
+        Providing productId, producQuantity; add new item to users cart. If item
+        is already in cart, quantity will be updated. This endpoint requires
+        authentication via a JWT token stored in a cookie (`authToken`). Ensure
+        you are logged in and the cookie is present in your browser.
+      operationId: addItemCart
+      responses:
+        '200':
+          description: Add quantity to item in cart
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Update quantity of item in cart:
+                  value: Product already in cart - Added quantity
+        '201':
+          description: Successfully add item to cart
+          content:
+            application/json:
+              examples:
+                Success add to cart:
+                  value: |-
+                    {
+                        "message": "Item added to cart",
+                        "addedProduct": {
+                            "customer_id": 9,
+                            "product_id": 3,
+                            "quantity": 10
+                        }
+                    }
+        '500':
+          description: Server error
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Server error:
+                  value: Server error
+        default:
+          description: Default error sample response
+      tags:
+        - cart
+    delete:
+      summary: Delete all items from cart
+      description: >-
+        Delete all items from cart. This endpoint requires authentication via a
+        JWT token stored in a cookie (`authToken`). Ensure you are logged in and
+        the cookie is present in your browser.
+      operationId: deleteCart
+      responses:
+        '200':
+          description: Successfully cleared cart
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Successful cleared cart:
+                  value: Deleted all items from cart
+        '500':
+          description: Server error
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Server error:
+                  value: Server error
+        default:
+          description: Default error sample response
+      tags:
+        - cart
+  /orders:
+    get:
+      summary: Retrieve all orders
+      description: ''
+      operationId: getAllOrders
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              examples:
+                Successful Operation:
+                  value: |-
+                    [
+                        {
+                            "id": 4,
+                            "customer_id": 9,
+                            "order_date": "2025-09-02T07:00:00.000Z",
+                            "order_total": 399,
+                            "status": "pending"
+                        },
+                        {
+                            "id": 5,
+                            "customer_id": 9,
+                            "order_date": "2025-09-02T07:00:00.000Z",
+                            "order_total": 400,
+                            "status": "pending"
+                        },
+                        {
+                            "id": 6,
+                            "customer_id": 9,
+                            "order_date": "2025-09-02T07:00:00.000Z",
+                            "order_total": 399.85,
+                            "status": "pending"
+                        },
+                        {
+                            "id": 3,
+                            "customer_id": 9,
+                            "order_date": "2025-09-02T07:00:00.000Z",
+                            "order_total": 399.84999999999997,
+                            "status": "fulfilled"
+                        }
+                    ]
+        '500':
+          description: Server error
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Server error:
+                  value: Server error
+        default:
+          description: Default error sample response
+      tags:
+        - orders
+    post:
+      summary: Add order to database
+      description: >-
+        Add new order to database. Order total is calculated by items inside
+        cart. Cart items with matching user id will be deleted after order
+        creation. This endpoint requires authentication via a JWY token stored
+        in a cookie (`authToken`). Ensure you are logged in and the cookie is
+        present in your browser.
+      operationId: addOrder
+      responses:
+        '201':
+          description: Successful order creation
+          content:
+            application/json:
+              examples:
+                Successful order creation:
+                  value: |-
+                    {
+                        "message": "Order created",
+                        "order": {
+                            "id": 7,
+                            "customer_id": 9,
+                            "order_date": "2025-09-02T07:00:00.000Z",
+                            "order_total": 1349.55,
+                            "status": "pending"
+                        }
+                    }
+        '500':
+          description: Server error
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Server error:
+                  value: Server error
+        default:
+          description: Default error sample response
+      tags:
+        - orders
+  /orders/users/{id}:
+    summary: Retrieve all orders with matching customer id
+    get:
+      summary: ''
+      description: >-
+        This endpoint requires authentication via a JWT token stored in a cookie
+        (`authToken`). Ensure you are logged in and the cookie is present in
+        your browser.
+      security:
+        - JWTcookieAuth: []
+      operationId: getOrdersById
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of customer
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              examples:
+                Successful operation:
+                  value: |-
+                    [
+                        {
+                            "id": 4,
+                            "customer_id": 9,
+                            "order_date": "2025-09-02T07:00:00.000Z",
+                            "order_total": 399,
+                            "status": "pending"
+                        },
+                        {
+                            "id": 5,
+                            "customer_id": 9,
+                            "order_date": "2025-09-02T07:00:00.000Z",
+                            "order_total": 400,
+                            "status": "pending"
+                        },
+                        {
+                            "id": 6,
+                            "customer_id": 9,
+                            "order_date": "2025-09-02T07:00:00.000Z",
+                            "order_total": 399.85,
+                            "status": "pending"
+                        },
+                        {
+                            "id": 3,
+                            "customer_id": 9,
+                            "order_date": "2025-09-02T07:00:00.000Z",
+                            "order_total": 399.84999999999997,
+                            "status": "fulfilled"
+                        }
+                    ]
+        '500':
+          description: Server error
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Server error:
+                  value: Server error
+        default:
+          description: Default error sample response
+      tags:
+        - orders
+  /cart/users{id}:
+    summary: Retrieve cart items with matching customer id
+    get:
+      summary: ''
+      description: >-
+        This endpoint requires authentication via a JWT token stored in a cookie
+        (`authToken`). Ensure you are logged in and the cookie is present in
+        your browser.
+      security:
+        - JWTcookieAuth: []
+      operationId: getUserCart
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of customer
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              examples:
+                Successful operation:
+                  value: |-
+                    [
+                        {
+                            "customer_id": 9,
+                            "product_id": 2,
+                            "quantity": 5
+                        },
+                        {
+                            "customer_id": 9,
+                            "product_id": 1,
+                            "quantity": 10
+                        }
+                    ]
+        '500':
+          description: Server error
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Server error:
+                  value: Server error
+        default:
+          description: Default error sample response
+      tags:
+        - cart
+        - users
+  /products/{id}:
+    get:
+      summary: Retrieve product information with matching id
+      description: ''
+      operationId: getProductById
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of product
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              examples:
+                Successful operation:
+                  value: |-
+                    [
+                        {
+                            "id": 1,
+                            "product_name": "T-Shirt",
+                            "product_price": 24.99,
+                            "product_quantity": 100,
+                            "product_description": "A blank T-shirt"
+                        }
+                    ]
+        '500':
+          description: Server error
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Server error:
+                  value: Server error
+        default:
+          description: Default error sample response
+      tags:
+        - products
+    patch:
+      summary: Update product with matching id
+      description: Update one or more fields. Fields not provided will remain unchanged.
+      operationId: updateProduct
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                product_name:
+                  type: string
+                  example: T-Shirt
+                product_price:
+                  type: number
+                  example: 24.99
+                product_ quantity:
+                  type: integer
+                  example: 100
+                product_description:
+                  type: string
+                  example: A blank T-Shirt
+      responses:
+        '200':
+          description: Successful update
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Successful Update:
+                  value: Products with id {id} updated
+        '500':
+          description: Server error
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Server error:
+                  value: Server error
+        default:
+          description: Default error sample response
+      tags:
+        - products
+    delete:
+      summary: Delete product with matching id
+      description: Delete product with matching id from database
+      operationId: deleteProduct
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of product
+      responses:
+        '200':
+          description: Successful product deletion
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Successful product deletion:
+                  value: Product {id} deleted
+        '500':
+          description: Server error
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Server error:
+                  value: Server error
+        default:
+          description: Default error sample response
+      tags:
+        - products
+  /users/{id}:
+    summary: Retrieve user information with matching id
+    get:
+      summary: ''
+      description: ''
+      operationId: getUserById
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of user
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              examples:
+                Successful operation:
+                  value: |-
+                    [
+                        {
+                            "id": 9,
+                            "first_name": "John",
+                            "last_name": "Doe",
+                            "email": "myeamil@gmail.com",
+                            "user_name": "username123",
+                            "password_hash": "$2b$10$PaWmogrvZlC28KHZjUqL0.1bMc086XMgkBpQhj7lN9e43SmRwpH3a"
+                        }
+                    ]
+        '500':
+          description: Server error
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Server error:
+                  value: Server error
+                Server Error:
+                  value: Server Error
+        default:
+          description: Default error sample response
+      tags:
+        - users
+    patch:
+      summary: Update user information with matching id
+      description: Update one or more fields. Fields not provided will remain unchanged.
+      operationId: ''
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                first_name:
+                  type: string
+                  example: John
+                last_name:
+                  type: string
+                  example: Doe
+                email:
+                  type: string
+                  format: email
+                  example: myemail@gmail.com
+                user_name:
+                  type: string
+                  example: username123
+                password_hash:
+                  type: string
+                  description: Password will be hashed using bcrypt
+                  example: password
+      responses:
+        '200':
+          description: Successful update
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Successful operation:
+                  value: Users with id {id} updated
+        '500':
+          description: Server error
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Server error:
+                  value: Server error
+        default:
+          description: Default error sample response
+      tags:
+        - users
+    delete:
+      summary: Delete user with matching id
+      description: Delete user from database
+      operationId: deleteUser
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of user
+      responses:
+        '200':
+          description: Successful user deletion
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Successful user deletion:
+                  value: User {id} deleted
+        '500':
+          description: Server error
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Server error:
+                  value: Server error
+        default:
+          description: Default error sample response
+      tags:
+        - users
+  /cart/product/{id}:
+    summary: Updated product quantity inside users cart
+    patch:
+      summary: Update product quantity in users cart
+      description: >-
+        If product quantity update is `0`, product will be deleted from cart.
+        This endpoint requires authentication via a JWT token stored in a cookie
+        (`authToken`). Ensure you are logged in and the cookie is present in
+        your browser      
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                productQuantity:
+                  type: integer
+                  example: 10
+      operationId: updateCartProduct
+      responses:
+        '200':
+          description: Successful update order status
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Successful update:
+                  value: Product {id} updated quantity to {productQuantity}
+                0 quantity:
+                  value: Quantity set to 0 - Product removed from cart
+        '500':
+          description: Server error
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Server error:
+                  value: Server error
+        default:
+          description: Default error sample response
+      tags:
+        - cart
+    delete:
+      summary: Delete item from cart
+      description: >-
+        Delete item from users cart. This endpoint requires authentication via a
+        JWT token stored in a cookie (`authToken`). Ensure you are logged in and
+        the cookie is present in your browser.
+      operationId: deleteCartItem
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of product
+      responses:
+        '200':
+          description: Successful item deletion from cart
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Successful item deletion from cart:
+                  value: Item deleted from cart
+        '500':
+          description: Server error
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Server error:
+                  value: Server error
+        default:
+          description: Default error sample response
+      tags:
+        - cart
+  /orders/{id}:
+    summary: Orders with matching order id
+    get:
+      summary: Retrieve order with matching id
+      description: ''
+      operationId: getOrderById
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of order
+      responses:
+        '200':
+          description: Successful order retrieval
+          content:
+            application/json:
+              examples:
+                Successful order retrieval:
+                  value: |-
+                    {
+                        "id": 4,
+                        "customer_id": 9,
+                        "order_date": "2025-09-02T07:00:00.000Z",
+                        "order_total": 399,
+                        "status": "pending"
+                    }
+        '500':
+          description: Server error
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Server error:
+                  value: Server error
+        default:
+          description: Default error sample response
+      tags:
+        - orders
+    patch:
+      summary: Update order status with matching order id
+      description: ''
+      operationId: updateOrderStatus
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of order
+      responses:
+        '200':
+          description: Successful order update
+          content:
+            application/json:
+              examples:
+                Successful update status 'fulfilled':
+                  value: |-
+                    [
+                    {
+                            "id": 3,
+                            "customer_id": 9,
+                            "order_date": "2025-09-02T07:00:00.000Z",
+                            "order_total": 399.84999999999997,
+                            "status": "fulfilled"
+                        }
+                    ]
+        '500':
+          description: Server error
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Server error:
+                  value: Server error
+        default:
+          description: Default error sample response
+      tags:
+        - orders
+    delete:
+      summary: Delete order with matching id
+      description: Delete order with matching id from database
+      operationId: deleteOrder
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of order
+      responses:
+        '200':
+          description: Successful order deletion
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Successful order deletion:
+                  value: Order with id {id} deleted
+        '500':
+          description: Server error
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Server error:
+                  value: Server error
+        default:
+          description: Default error sample response
+      tags:
+        - orders
+  /login:
+    summary: Login into app
+    post:
+      summary: Login into app
+      description: >-
+        Generates a JWT token called `authToken` that is stored as a cookie.
+        This will allow you access to the app and do API operations with the
+        app. Username and password must exist in database already (Use POST
+        /users to add new user to database).
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  example: John
+                password:
+                  type: string
+                  example: password123
+                  description: >-
+                    Password will go through bcyrpt.compare to compare to hash
+                    inside database
+      responses:
+        '200':
+          description: Successful login
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Successful login:
+                  value: Successful login!
+        '401':
+          description: Username or Password incorrect
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Password incorrect:
+                  value: Password incorrect
+                Username not found:
+                  value: Username not found
+        '500':
+          description: Server error
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Server error:
+                  value: Server error
+        default:
+          description: Default error sample response
+      tags:
+        - login
+  /logout:
+    summary: Remove access of app
+    description: Deletes JWT token 'authToken' cookie and logs out of app
+    post:
+      summary: Log out of app
+      description: Deletes JWT token 'authToken' cookie and logs out of app
+      operationId: logout
+      responses:
+        '200':
+          description: Successful logout
+          content:
+            text/plain; charset=utf-8:
+              examples:
+                Successful logout:
+                  value: Successful logout
+        default:
+          description: Default error sample response
+      tags:
+        - logout
+components:
+  securitySchemes:
+    JWTcookieAuth:
+      type: apiKey
+      in: cookie
+      name: authToken
+      description: >-
+        JWT token is expect in a cookie named `authToken`. This cookie is set
+        after a successful login via the /login endpoint.
